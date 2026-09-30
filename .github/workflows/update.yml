@@ -2,9 +2,8 @@ name: Actualizar resultados Triplex
 
 on:
   schedule:
-    # Horario de verano (UTC+2): Se ejecuta unos minutos después de cada sorteo (10:05, 12:05, 14:05, 17:05, 21:20)
-    - cron: '5 8,10,12,15 * * *'
-    - cron: '20 19 * * *'
+    # Cubre las horas clave tanto en horario de verano (UTC+2) como de invierno (UTC+1)
+    - cron: '5 7,8,9,10,11,12,13,14,15,19,20 * * *'
   workflow_dispatch: # Permite lanzarlo manualmente cuando quieras
 
 jobs:
