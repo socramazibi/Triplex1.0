@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111827">
+  <title>Triplex ONCE - Resultados</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div>
+        <p class="eyebrow">JuegosONCE</p>
+        <h1>Triplex de la ONCE</h1>
+        <p class="subtitle">Resultados de los 5 sorteos diarios</p>
+      </div>
+      <button id="refreshBtn" class="refresh" type="button" aria-label="Actualizar resultados">
+        ↻ Actualizar
+      </button>
+    </header>
+
+    <section class="controls">
+      <label for="dateInput">Fecha del sorteo</label>
+      <div class="date-row">
+        <button id="prevBtn" class="date-nav" type="button" aria-label="Día anterior">‹</button>
+        <input id="dateInput" type="date">
+        <button id="nextBtn" class="date-nav" type="button" aria-label="Día siguiente">›</button>
+      </div>
+      <button id="todayBtn" class="today" type="button">Ir a hoy</button>
+    </section>
+
+    <section class="status" id="status" aria-live="polite">
+      Cargando resultados...
+    </section>
+
+    <section id="results" class="results" aria-live="polite"></section>
+
+    <footer>
+      <p>
+        Datos consultados desde JuegosONCE, web oficial de la ONCE.
+      </p>
+      <a href="https://www.juegosonce.es/historico-resultados-triplex-once"
+         target="_blank" rel="noopener noreferrer">
+        Ver resultados oficiales
+      </a>
+    </footer>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
