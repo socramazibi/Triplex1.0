@@ -22,23 +22,6 @@ function slugForDate(value) {
   return `${date.getDate()}-${MONTHS[date.getMonth()]}-${date.getFullYear()}`;
 }
 
-function normalizeText(text) {
-  return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
-}
-
-function extractPageDate(text) {
-  const normalized = normalizeText(text);
-  const months = MONTHS.join("|");
-  const regex = new RegExp(`(?:resultados[^.]{0,100})?(\\d{1,2})\\s+(?:de\\s+)?(${months})\\s+(?:de\\s+)?(\\d{4})`, "i");
-  const match = normalized.match(regex);
-  if (!match) return null;
-  const day = Number(match[1]);
-  const month = MONTHS.indexOf(match[2]);
-  const year = Number(match[3]);
-  if (month < 0) return null;
-  return `${year}-${pad(month + 1)}-${pad(day)}`;
-}
-
 function extractResults(text) {
   const values = [null, null, null, null, null];
   const patterns = [
@@ -71,15 +54,9 @@ async function processDate(dateStr) {
     if (!response.ok) return;
     
     const text = await response.text();
-    const pageDate = extractPageDate(text);
-
-    if (pageDate && pageDate !== dateStr) {
-      console.log(`La página obtenida no coincide con ${dateStr} (es de ${pageDate}).`);
-      return;
-    }
-
     const values = extractResults(text);
     
+    // Si encuentra al menos un resultado, guarda el archivo para esa fecha
     if (values.some(v => v !== null)) {
       const dataDir = path.join(__dirname, 'data');
       if (!fs.existsSync(dataDir)) {
@@ -89,6 +66,8 @@ async function processDate(dateStr) {
       const filePath = path.join(dataDir, `${dateStr}.json`);
       fs.writeFileSync(filePath, JSON.stringify({ values, officialUrl }, null, 2));
       console.log(`¡Resultados de ${dateStr} guardados correctamente!`);
+    } else {
+      console.log(`No se encontraron sorteos publicados todavía para ${dateStr}.`);
     }
   } catch (error) {
     console.error(`Error al procesar ${dateStr}:`, error.message);
@@ -96,7 +75,7 @@ async function processDate(dateStr) {
 }
 
 async function run() {
-  // Comprueba hoy (0) y los dos días anteriores (-1 y -2) para asegurar el histórico reciente
+  // Comprueba hoy (0) y los dos días anteriores (-1 y -2)
   const daysToCheck = [0, -1, -2];
   
   for (const offset of daysToCheck) {
