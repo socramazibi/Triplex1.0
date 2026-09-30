@@ -80,11 +80,10 @@ async function processDate(dateStr) {
 
     const values = extractResults(text);
     
-    // Solo guardamos si al menos hay algún resultado publicado
     if (values.some(v => v !== null)) {
       const dataDir = path.join(__dirname, 'data');
       if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir);
+        fs.mkdirSync(dataDir, { recursive: true });
       }
 
       const filePath = path.join(dataDir, `${dateStr}.json`);
@@ -97,7 +96,7 @@ async function processDate(dateStr) {
 }
 
 async function run() {
-  // Revisa hoy (0) y los dos días anteriores (-1 y -2) para asegurar histórico reciente
+  // Comprueba hoy (0) y los dos días anteriores (-1 y -2) para asegurar el histórico reciente
   const daysToCheck = [0, -1, -2];
   
   for (const offset of daysToCheck) {
