@@ -22,6 +22,20 @@ function getTargetDate(offsetDays = 0) {
 function slugForDate(value) {
   const [year, month, day] = value.split("-").map(Number);
   const date = new Date(year, month - 1, day);
+  return `${date.getDate()}-${MONTHS[date.getMonth()]-1}-${date.getFullYear()}`; // Nota: mes indexado correctamente abajo
+}
+
+// Corrección para el mes en el slug
+function slugForDate(value) {
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  return `${date.getDate()}-${MONTHS[date.getMonth()}-${date.getFullYear()}`; // Ajustado en la función de abajo por seguridad
+}
+
+// Función limpia para el slug de la fecha
+function slugForDateClean(value) {
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
   return `${date.getDate()}-${MONTHS[date.getMonth()]}-${date.getFullYear()}`;
 }
 
@@ -45,7 +59,20 @@ function extractResults(text) {
   return values;
 }
 
-// Carga el archivo histórico existente o devuelve un objeto vacío
+// Genera un array con todas las fechas desde el 1 de enero de este año hasta hoy
+function getAllDatesOfCurrentYear() {
+  const dates = [];
+  const year = new Date().getFullYear();
+  let currentDate = new Date(year, 0, 1); // 1 de enero
+  const today = new Date();
+
+  while (currentDate <= today) {
+    dates.push(`${currentDate.getFullYear()}-${pad(currentDate.getMonth() + 1)}-${pad(currentDate.getDate())}`);
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  return dates;
+}
+
 function loadHistorico() {
   if (fs.existsSync(HISTORICO_PATH)) {
     try {
@@ -58,12 +85,12 @@ function loadHistorico() {
   return {};
 }
 
-// Guarda el histórico completo en el archivo JSON
 function saveHistorico(historico) {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
-  // Ordena las claves por fecha para que el JSON quede cronológico
+
+  // Ordena las claves cronológicamente
   const sortedHistorico = Object.keys(historico)
     .sort()
     .reduce((acc, key) => {
@@ -74,38 +101,8 @@ function saveHistorico(historico) {
   fs.writeFileSync(HISTORICO_PATH, JSON.stringify(sortedHistorico, null, 2), 'utf8');
 }
 
-// Muestra estadísticas básicas por consola de los números que más salen
-function calcularEstadisticas(historico) {
-  const frecuencias = { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0 };
-  let totalSorteos = 0;
-
-  for (const fecha in historico) {
-    const item = historico[fecha];
-    if (item && item.values) {
-      item.values.forEach(sorteo => {
-        if (sorteo) {
-          totalSorteos++;
-          // Recorre cada dígito del número premiado (ej: "482" -> '4', '8', '2')
-          for (const digito of sorteo) {
-            if (frecuencias[digito] !== undefined) {
-              frecuencias[digito]++;
-            }
-          }
-        }
-      });
-    }
-  }
-
-  console.log(`\n--- ESTADÍSTICAS GLOBALES (${totalSorteos} sorteos analizados) ---`);
-  const ranking = Object.entries(frecuencias).sort((a, b) => b[1] - a[1]);
-  ranking.forEach(([digito, count]) => {
-    console.log(`Número ${digito}: ${count} apariciones`);
-  });
-  console.log('------------------------------------------------------------\n');
-}
-
 async function processDate(dateStr, historico) {
-  const slug = slugForDate(dateStr);
+  const slug = slugForDateClean(dateStr);
   const officialUrl = `https://www.juegosonce.es/resultados-triplex-${slug}`;
   const proxyUrl = `https://r.jina.ai/${officialUrl}?_=${Date.now()}`;
 
@@ -116,10 +113,9 @@ async function processDate(dateStr, historico) {
     const text = await response.text();
     const values = extractResults(text);
     
-    // Si encuentra al menos un resultado, lo actualiza en el objeto histórico
     if (values.some(v => v !== null)) {
       historico[dateStr] = { values, officialUrl };
-      console.log(`[OK] Resultados de ${dateStr} sincronizados.`);
+      console.log(`[OK] ${dateStr} sincronizado.`);
       return true;
     }
   } catch (error) {
@@ -130,20 +126,27 @@ async function processDate(dateStr, historico) {
 
 async function run() {
   const historico = loadHistorico();
+  const fileExists = fs.existsSync(HISTORICO_PATH);
 
-  // Comprueba hoy (0) y los dos días anteriores (-1 y -2)
-  const daysToCheck = [0, -1, -2];
-  
-  for (const offset of daysToCheck) {
-    const targetDate = getTargetDate(offset);
-    await processDate(targetDate, historico);
+  let daysToCheck = [];
+
+  if (!fileExists) {
+    console.log("Primera ejecución detectada: Descargando todo el histórico del año en curso...");
+    daysToCheck = getAllDatesOfCurrentYear();
+  } else {
+    console.log("Ejecución rutinaria: Comprobando los últimos 3 días...");
+    daysToCheck = [getTargetDate(0), getTargetDate(-1), getTargetDate(-2)];
   }
 
-  // Guarda los cambios actualizados
-  saveHistorico(historico);
+  // Procesar las fechas correspondientes
+  for (const targetDate of daysToCheck) {
+    await processDate(targetDate, historico);
+    // Pequeña pausa opcional si descarga el año entero para no saturar el proxy
+    if (!fileExists) await new Promise(resolve => setTimeout(resolve, 200));
+  }
 
-  // Calcula y muestra estadísticas en la consola
-  calcularEstadisticas(historico);
+  saveHistorico(historico);
+  console.log("¡Proceso finalizado con éxito! data/historico.json actualizado.");
 }
 
 run();
