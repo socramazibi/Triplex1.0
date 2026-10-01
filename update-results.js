@@ -6,6 +6,9 @@ const MONTHS = [
   "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
 ];
 
+const DATA_DIR = path.join(__dirname, 'data');
+const HISTORICO_PATH = path.join(DATA_DIR, 'historico.json');
+
 function pad(n) {
   return String(n).padStart(2, "0");
 }
@@ -42,46 +45,105 @@ function extractResults(text) {
   return values;
 }
 
-async function processDate(dateStr) {
+// Carga el archivo histórico existente o devuelve un objeto vacío
+function loadHistorico() {
+  if (fs.existsSync(HISTORICO_PATH)) {
+    try {
+      const data = fs.readFileSync(HISTORICO_PATH, 'utf8');
+      return JSON.parse(data);
+    } catch (e) {
+      return {};
+    }
+  }
+  return {};
+}
+
+// Guarda el histórico completo en el archivo JSON
+function saveHistorico(historico) {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+  // Ordena las claves por fecha para que el JSON quede cronológico
+  const sortedHistorico = Object.keys(historico)
+    .sort()
+    .reduce((acc, key) => {
+      acc[key] = historico[key];
+      return acc;
+    }, {});
+
+  fs.writeFileSync(HISTORICO_PATH, JSON.stringify(sortedHistorico, null, 2), 'utf8');
+}
+
+// Muestra estadísticas básicas por consola de los números que más salen
+function calcularEstadisticas(historico) {
+  const frecuencias = { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0 };
+  let totalSorteos = 0;
+
+  for (const fecha in historico) {
+    const item = historico[fecha];
+    if (item && item.values) {
+      item.values.forEach(sorteo => {
+        if (sorteo) {
+          totalSorteos++;
+          // Recorre cada dígito del número premiado (ej: "482" -> '4', '8', '2')
+          for (const digito of sorteo) {
+            if (frecuencias[digito] !== undefined) {
+              frecuencias[digito]++;
+            }
+          }
+        }
+      });
+    }
+  }
+
+  console.log(`\n--- ESTADÍSTICAS GLOBALES (${totalSorteos} sorteos analizados) ---`);
+  const ranking = Object.entries(frecuencias).sort((a, b) => b[1] - a[1]);
+  ranking.forEach(([digito, count]) => {
+    console.log(`Número ${digito}: ${count} apariciones`);
+  });
+  console.log('------------------------------------------------------------\n');
+}
+
+async function processDate(dateStr, historico) {
   const slug = slugForDate(dateStr);
   const officialUrl = `https://www.juegosonce.es/resultados-triplex-${slug}`;
   const proxyUrl = `https://r.jina.ai/${officialUrl}?_=${Date.now()}`;
 
-  console.log(`Consultando fecha ${dateStr}: ${officialUrl}`);
-
   try {
     const response = await fetch(proxyUrl);
-    if (!response.ok) return;
+    if (!response.ok) return false;
     
     const text = await response.text();
     const values = extractResults(text);
     
-    // Si encuentra al menos un resultado, guarda el archivo para esa fecha
+    // Si encuentra al menos un resultado, lo actualiza en el objeto histórico
     if (values.some(v => v !== null)) {
-      const dataDir = path.join(__dirname, 'data');
-      if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
-      }
-
-      const filePath = path.join(dataDir, `${dateStr}.json`);
-      fs.writeFileSync(filePath, JSON.stringify({ values, officialUrl }, null, 2));
-      console.log(`¡Resultados de ${dateStr} guardados correctamente!`);
-    } else {
-      console.log(`No se encontraron sorteos publicados todavía para ${dateStr}.`);
+      historico[dateStr] = { values, officialUrl };
+      console.log(`[OK] Resultados de ${dateStr} sincronizados.`);
+      return true;
     }
   } catch (error) {
     console.error(`Error al procesar ${dateStr}:`, error.message);
   }
+  return false;
 }
 
 async function run() {
+  const historico = loadHistorico();
+
   // Comprueba hoy (0) y los dos días anteriores (-1 y -2)
   const daysToCheck = [0, -1, -2];
   
   for (const offset of daysToCheck) {
     const targetDate = getTargetDate(offset);
-    await processDate(targetDate);
+    await processDate(targetDate, historico);
   }
+
+  // Guarda los cambios actualizados
+  saveHistorico(historico);
+
+  // Calcula y muestra estadísticas en la consola
+  calcularEstadisticas(historico);
 }
 
 run();
