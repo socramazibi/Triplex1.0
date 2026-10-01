@@ -22,20 +22,6 @@ function getTargetDate(offsetDays = 0) {
 function slugForDate(value) {
   const [year, month, day] = value.split("-").map(Number);
   const date = new Date(year, month - 1, day);
-  return `${date.getDate()}-${MONTHS[date.getMonth()]-1}-${date.getFullYear()}`; // Nota: mes indexado correctamente abajo
-}
-
-// Corrección para el mes en el slug
-function slugForDate(value) {
-  const [year, month, day] = value.split("-").map(Number);
-  const date = new Date(year, month - 1, day);
-  return `${date.getDate()}-${MONTHS[date.getMonth()}-${date.getFullYear()}`; // Ajustado en la función de abajo por seguridad
-}
-
-// Función limpia para el slug de la fecha
-function slugForDateClean(value) {
-  const [year, month, day] = value.split("-").map(Number);
-  const date = new Date(year, month - 1, day);
   return `${date.getDate()}-${MONTHS[date.getMonth()]}-${date.getFullYear()}`;
 }
 
@@ -102,7 +88,7 @@ function saveHistorico(historico) {
 }
 
 async function processDate(dateStr, historico) {
-  const slug = slugForDateClean(dateStr);
+  const slug = slugForDate(dateStr);
   const officialUrl = `https://www.juegosonce.es/resultados-triplex-${slug}`;
   const proxyUrl = `https://r.jina.ai/${officialUrl}?_=${Date.now()}`;
 
