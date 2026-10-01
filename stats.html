@@ -1,1 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estadísticas - Triplex</title>
+    <!-- Aquí puedes enlazar tus estilos CSS o Tailwind -->
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; background: #f9f9f9; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+        a { display: inline-block; margin-bottom: 20px; text-decoration: none; color: #007bff; }
+    </style>
+</head>
+<body>
+
+    <a href="index.html">← Volver al inicio</a>
+    
+    <div class="card">
+        <h1>Estadísticas del Triplex</h1>
+        <p id="total-sorteos">Analizando sorteos...</p>
+    </div>
+
+    <div class="card">
+        <h2>Dígitos más frecuentes (0 al 9)</h2>
+        <div id="ranking-container">Cargando estadísticas...</div>
+    </div>
+
+    <script>
+        async function cargarEstadisticas() {
+            try {
+                const response = await fetch('data/historico.json');
+                const historico = await response.json();
+
+                const frecuencias = { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0 };
+                let totalSorteos = 0;
+
+                // Recorremos todo el histórico unificado
+                for (const fecha in historico) {
+                    const item = historico[fecha];
+                    if (item && item.values) {
+                        item.values.forEach(sorteo => {
+                            if (sorteo) {
+                                totalSorteos++;
+                                for (const digito of sorteo) {
+                                    if (frecuencias[digito] !== undefined) {
+                                        frecuencias[digito]++;
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+
+                // Actualizar total en pantalla
+                document.getElementById('total-sorteos').innerText = `Total de sorteos analizados en el histórico: ${totalSorteos}`;
+
+                // Ordenar ranking de mayor a menor frecuencia
+                const ranking = Object.entries(frecuencias).sort((a, b) => b[1] - a[1]);
+
+                let html = '';
+                ranking.forEach(([digito, count]) => {
+                    html += `
+                        <div class="stat-row">
+                            <span><strong>Número ${digito}</strong></span>
+                            <span>${count} apariciones</span>
+                        </div>
+                    `;
+                });
+
+                document.getElementById('ranking-container').innerHTML = html;
+
+            } catch (error) {
+                document.getElementById('ranking-container').innerText = 'Error al cargar los datos para las estadísticas.';
+                console.error(error);
+            }
+        }
+
+        cargarEstadisticas();
+    </script>
+</body>
+</html>
 
