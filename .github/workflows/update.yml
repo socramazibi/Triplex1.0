@@ -2,8 +2,8 @@ name: Actualizar resultados Triplex
 
 on:
   schedule:
-    # Cubre las horas clave tanto en horario de verano (UTC+2) como de invierno (UTC+1)
-    - cron: '5 7,8,9,10,11,12,13,14,15,19,20 * * *'
+    - cron: '0 8-22 * * *'
+    
   workflow_dispatch: # Permite lanzarlo manualmente cuando quieras
 
 jobs:
