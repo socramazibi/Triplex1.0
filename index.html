@@ -1,54 +1,93 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#111827">
-  <title>Triplex ONCE - Resultados</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estadísticas - Triplex</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 650px; margin: 40px auto; padding: 0 20px; background: #f4f7f6; color: #333; }
+        .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h1, h2 { margin-top: 0; color: #111; }
+        .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #edf2f7; }
+        .stat-row:last-child { border-bottom: none; }
+        .digit-badge { background: #007bff; color: white; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: bold; }
+        .back-link { display: inline-block; margin-bottom: 20px; text-decoration: none; color: #007bff; font-weight: 500; }
+        .back-link:hover { text-decoration: underline; }
+        .loading { color: #666; font-style: italic; }
+    </style>
 </head>
 <body>
-  <main class="app">
-    <header class="header">
-      <div>
-        <p class="eyebrow">JuegosONCE</p>
-        <h1>Triplex de la ONCE</h1>
-        <p class="subtitle">Resultados de los 5 sorteos diarios</p>
-      </div>
-      <button id="refreshBtn" class="refresh" type="button" aria-label="Actualizar resultados">
-        ↻ Actualizar
-      </button>
-    </header>
 
-    <section class="controls">
-      <label for="dateInput">Fecha del sorteo</label>
-      <div class="date-row">
-        <button id="prevBtn" class="date-nav" type="button" aria-label="Día anterior">‹</button>
-        <input id="dateInput" type="date">
-        <button id="nextBtn" class="date-nav" type="button" aria-label="Día siguiente">›</button>
-      </div>
-      <button id="todayBtn" class="today" type="button">Ir a hoy</button>
-    </section>
+    <a href="index.html" class="back-link">← Volver al inicio</a>
+    
+    <div class="card">
+        <h1>Estadísticas del Triplex</h1>
+        <p id="total-sorteos" class="loading">Analizando el histórico de sorteos...</p>
+    </div>
 
-    <section class="status" id="status" aria-live="polite">
-      Cargando resultados...
-    </section>
+    <div class="card">
+        <h2>Dígitos más frecuentes (0 al 9)</h2>
+        <div id="ranking-container" class="loading">Calculando frecuencias...</div>
+    </div>
 
-    <section id="results" class="results" aria-live="polite"></section>
+    <script>
+        async function cargarEstadisticas() {
+            try {
+                const response = await fetch('data/historico.json');
+                if (!response.ok) throw new Error('No se pudo leer el histórico');
+                
+                const historico = await response.json();
 
-    <footer>
-      <p>
-        Datos consultados desde JuegosONCE, web oficial de la ONCE.
-      </p>
-      <a href="https://www.juegosonce.es/historico-resultados-triplex-once"
-         target="_blank" rel="noopener noreferrer">
-        Ver resultados oficiales
-      </a>
-      <a href="stats.html" class="btn-stats">📊 Ver Estadísticas</a>
-      
-    </footer>
-  </main>
+                const frecuencias = { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0 };
+                let totalSorteosValidos = 0;
 
-  <script src="script.js"></script>
+                // Recorremos todas las fechas guardadas en el JSON unificado
+                for (const fecha in historico) {
+                    const item = historico[fecha];
+                    if (item && item.values) {
+                        item.values.forEach(sorteo => {
+                            if (sorteo) {
+                                totalSorteosValidos++;
+                                // Cada sorteo es un número de 3 dígitos (ej: "482")
+                                for (const digito of sorteo) {
+                                    if (frecuencias[digito] !== undefined) {
+                                        frecuencias[digito]++;
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+
+                // Mostrar total de sorteos analizados
+                document.getElementById('total-sorteos').innerText = `Total de sorteos analizados en el archivo histórico: ${totalSorteosValidos}`;
+
+                // Ordenar de mayor a menor frecuencia
+                const ranking = Object.entries(frecuencias).sort((a, b) => b[1] - a[1]);
+
+                let html = '';
+                ranking.forEach(([digito, count], index) => {
+                    html += `
+                        <div class="stat-row">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span class="digit-badge">${digito}</span>
+                                <span><strong>#${index + 1}</strong> (Dígito ${digito})</span>
+                            </div>
+                            <span><strong>${count}</strong> apariciones</span>
+                        </div>
+                    `;
+                });
+
+                document.getElementById('ranking-container').innerHTML = html;
+
+            } catch (error) {
+                document.getElementById('total-sorteos').innerText = 'No se pudieron cargar los datos.';
+                document.getElementById('ranking-container').innerText = 'Verifica que el archivo data/historico.json exista y tenga datos.';
+                console.error(error);
+            }
+        }
+
+        cargarEstadisticas();
+    </script>
 </body>
 </html>
