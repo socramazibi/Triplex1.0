@@ -4,44 +4,51 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Estadísticas - Triplex</title>
-    <!-- Aquí puedes enlazar tus estilos CSS o Tailwind -->
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; background: #f9f9f9; color: #333; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
-        a { display: inline-block; margin-bottom: 20px; text-decoration: none; color: #007bff; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 650px; margin: 40px auto; padding: 0 20px; background: #f4f7f6; color: #333; }
+        .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h1, h2 { margin-top: 0; color: #111; }
+        .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #edf2f7; }
+        .stat-row:last-child { border-bottom: none; }
+        .digit-badge { background: #007bff; color: white; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: bold; }
+        .back-link { display: inline-block; margin-bottom: 20px; text-decoration: none; color: #007bff; font-weight: 500; }
+        .back-link:hover { text-decoration: underline; }
+        .loading { color: #666; font-style: italic; }
     </style>
 </head>
 <body>
 
-    <a href="index.html">← Volver al inicio</a>
+    <a href="index.html" class="back-link">← Volver al inicio</a>
     
     <div class="card">
         <h1>Estadísticas del Triplex</h1>
-        <p id="total-sorteos">Analizando sorteos...</p>
+        <p id="total-sorteos" class="loading">Analizando el histórico de sorteos...</p>
     </div>
 
     <div class="card">
         <h2>Dígitos más frecuentes (0 al 9)</h2>
-        <div id="ranking-container">Cargando estadísticas...</div>
+        <div id="ranking-container" class="loading">Calculando frecuencias...</div>
     </div>
 
     <script>
         async function cargarEstadisticas() {
             try {
                 const response = await fetch('data/historico.json');
+                if (!response.ok) throw new Error('No se pudo leer el histórico');
+                
                 const historico = await response.json();
 
                 const frecuencias = { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0 };
-                let totalSorteos = 0;
+                let totalSorteosValidos = 0;
 
-                // Recorremos todo el histórico unificado
+                // Recorremos todas las fechas guardadas en el JSON unificado
                 for (const fecha in historico) {
                     const item = historico[fecha];
                     if (item && item.values) {
                         item.values.forEach(sorteo => {
                             if (sorteo) {
-                                totalSorteos++;
+                                totalSorteosValidos++;
+                                // Cada sorteo es un número de 3 dígitos (ej: "482")
                                 for (const digito of sorteo) {
                                     if (frecuencias[digito] !== undefined) {
                                         frecuencias[digito]++;
@@ -52,18 +59,21 @@
                     }
                 }
 
-                // Actualizar total en pantalla
-                document.getElementById('total-sorteos').innerText = `Total de sorteos analizados en el histórico: ${totalSorteos}`;
+                // Mostrar total de sorteos analizados
+                document.getElementById('total-sorteos').innerText = `Total de sorteos analizados en el archivo histórico: ${totalSorteosValidos}`;
 
-                // Ordenar ranking de mayor a menor frecuencia
+                // Ordenar de mayor a menor frecuencia
                 const ranking = Object.entries(frecuencias).sort((a, b) => b[1] - a[1]);
 
                 let html = '';
-                ranking.forEach(([digito, count]) => {
+                ranking.forEach(([digito, count], index) => {
                     html += `
                         <div class="stat-row">
-                            <span><strong>Número ${digito}</strong></span>
-                            <span>${count} apariciones</span>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span class="digit-badge">${digito}</span>
+                                <span><strong>#${index + 1}</strong> (Dígito ${digito})</span>
+                            </div>
+                            <span><strong>${count}</strong> apariciones</span>
                         </div>
                     `;
                 });
@@ -71,7 +81,8 @@
                 document.getElementById('ranking-container').innerHTML = html;
 
             } catch (error) {
-                document.getElementById('ranking-container').innerText = 'Error al cargar los datos para las estadísticas.';
+                document.getElementById('total-sorteos').innerText = 'No se pudieron cargar los datos.';
+                document.getElementById('ranking-container').innerText = 'Verifica que el archivo data/historico.json exista y tenga datos.';
                 console.error(error);
             }
         }
@@ -80,4 +91,3 @@
     </script>
 </body>
 </html>
-
