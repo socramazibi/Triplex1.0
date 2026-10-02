@@ -194,12 +194,12 @@
     <script>
         let historicoData = {};
 
-        function pad(n) {
-            return String(n).padStart(2, '0');
-        }
-
-        function obtenerFechaStr(date) {
-            return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+        // Función segura para obtener la fecha local exacta YYYY-MM-DD sin desfases de UTC
+        function obtenerFechaLocalStr(date = new Date()) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
         }
 
         async function inicializar() {
@@ -209,19 +209,14 @@
                 
                 historicoData = await response.json();
 
-                // Obtener fecha de hoy
-                const hoy = new Date();
-                const hoyStr = obtenerFechaStr(hoy);
+                const hoyStr = obtenerFechaLocalStr();
 
-                // Configurar el input de fecha con el día de hoy por defecto
                 const inputFecha = document.getElementById('selector-fecha');
                 inputFecha.value = hoyStr;
-                inputFecha.max = hoyStr; // Opcional: limitar a hoy
+                inputFecha.max = hoyStr; // Limitar selección hasta hoy
 
-                // Mostrar los resultados del día seleccionado inicialmente
                 mostrarResultados(hoyStr);
 
-                // Eventos de los botones y el selector
                 inputFecha.addEventListener('change', (e) => {
                     mostrarResultados(e.target.value);
                 });
@@ -236,7 +231,7 @@
 
             } catch (error) {
                 console.error("Error al cargar el histórico:", error);
-                document.getElementById('resultados-container').innerHTML = 'No se pudo cargar el archivo <code>data/historico.json</code>. Asegúrate de que el script de GitHub Actions se haya ejecutado.';
+                document.getElementById('resultados-container').innerHTML = 'No se pudo cargar el archivo <code>data/historico.json</code>.';
             }
         }
 
@@ -245,10 +240,16 @@
             if (!inputFecha.value) return;
 
             const [year, month, day] = inputFecha.value.split('-').map(Number);
+            // Creamos la fecha respetando estrictamente el huso horario local
             const fechaActual = new Date(year, month - 1, day);
             fechaActual.setDate(fechaActual.getDate() + offset);
 
-            const nuevaFechaStr = obtenerFechaStr(fechaActual);
+            const nuevaFechaStr = obtenerFechaLocalStr(fechaActual);
+            
+            // No permitir ir más allá de hoy
+            const hoyStr = obtenerFechaLocalStr();
+            if (nuevaFechaStr > hoyStr) return;
+
             inputFecha.value = nuevaFechaStr;
             mostrarResultados(nuevaFechaStr);
         }
@@ -259,7 +260,7 @@
             const enlaceContainer = document.getElementById('enlace-oficial-container');
             const linkOficial = document.getElementById('link-oficial');
 
-            // Formatear título amigable de la fecha
+            // Formatear título amigable evitando problemas de desfase de zona horaria
             const [year, month, day] = dateStr.split('-').map(Number);
             const fechaObj = new Date(year, month - 1, day);
             const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -299,12 +300,11 @@
                 }
 
             } else {
-                container.innerHTML = 'No hay resultados registrados para esta fecha.';
+                container.innerHTML = 'Aún no se han celebrado o publicado los sorteos para esta fecha.';
                 enlaceContainer.style.display = 'none';
             }
         }
 
-        // Arrancar la aplicación en el cliente
         inicializar();
     </script>
 </body>
