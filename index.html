@@ -62,12 +62,52 @@
             margin-bottom: 20px;
         }
 
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .date-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="date"] {
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            background-color: #fff;
+            color: var(--text-color);
+        }
+
+        .btn-nav {
+            background-color: #e2e8f0;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #334155;
+            transition: background 0.2s;
+        }
+
+        .btn-nav:hover {
+            background-color: #cbd5e1;
+        }
+
         .date-title {
             font-size: 1.1rem;
             color: var(--text-secondary);
             margin-top: 0;
             margin-bottom: 16px;
             text-transform: capitalize;
+            font-weight: 600;
         }
 
         .sorteos-list {
@@ -132,9 +172,19 @@
     </header>
 
     <div class="card">
+        <!-- Controles para cambiar de día -->
+        <div class="controls">
+            <button id="btn-ayer" class="btn-nav">← Día Anterior</button>
+            <div class="date-picker-wrapper">
+                <label for="selector-fecha">Seleccionar:</label>
+                <input type="date" id="selector-fecha">
+            </div>
+            <button id="btn-mañana" class="btn-nav">Día Siguiente →</button>
+        </div>
+
         <h2 id="fecha-actual" class="date-title">Cargando fecha...</h2>
         <div id="resultados-container" class="status-message">
-            Consultando resultados de hoy...
+            Cargando resultados...
         </div>
         <div id="enlace-oficial-container" class="official-link-container" style="display: none;">
             <a id="link-oficial" href="#" target="_blank" class="official-link">Ver fuente oficial de la ONCE ↗</a>
@@ -142,68 +192,120 @@
     </div>
 
     <script>
-        async function cargarResultadosIndex() {
+        let historicoData = {};
+
+        function pad(n) {
+            return String(n).padStart(2, '0');
+        }
+
+        function obtenerFechaStr(date) {
+            return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+        }
+
+        async function inicializar() {
+            try {
+                const response = await fetch('data/historico.json');
+                if (!response.ok) throw new Error('No se pudo cargar el archivo histórico');
+                
+                historicoData = await response.json();
+
+                // Obtener fecha de hoy
+                const hoy = new Date();
+                const hoyStr = obtenerFechaStr(hoy);
+
+                // Configurar el input de fecha con el día de hoy por defecto
+                const inputFecha = document.getElementById('selector-fecha');
+                inputFecha.value = hoyStr;
+                inputFecha.max = hoyStr; // Opcional: limitar a hoy
+
+                // Mostrar los resultados del día seleccionado inicialmente
+                mostrarResultados(hoyStr);
+
+                // Eventos de los botones y el selector
+                inputFecha.addEventListener('change', (e) => {
+                    mostrarResultados(e.target.value);
+                });
+
+                document.getElementById('btn-ayer').addEventListener('click', () => {
+                    cambiarDias(-1);
+                });
+
+                document.getElementById('btn-mañana').addEventListener('click', () => {
+                    cambiarDias(1);
+                });
+
+            } catch (error) {
+                console.error("Error al cargar el histórico:", error);
+                document.getElementById('resultados-container').innerHTML = 'No se pudo cargar el archivo <code>data/historico.json</code>. Asegúrate de que el script de GitHub Actions se haya ejecutado.';
+            }
+        }
+
+        function cambiarDias(offset) {
+            const inputFecha = document.getElementById('selector-fecha');
+            if (!inputFecha.value) return;
+
+            const [year, month, day] = inputFecha.value.split('-').map(Number);
+            const fechaActual = new Date(year, month - 1, day);
+            fechaActual.setDate(fechaActual.getDate() + offset);
+
+            const nuevaFechaStr = obtenerFechaStr(fechaActual);
+            inputFecha.value = nuevaFechaStr;
+            mostrarResultados(nuevaFechaStr);
+        }
+
+        function mostrarResultados(dateStr) {
             const container = document.getElementById('resultados-container');
             const fechaTitulo = document.getElementById('fecha-actual');
             const enlaceContainer = document.getElementById('enlace-oficial-container');
             const linkOficial = document.getElementById('link-oficial');
 
-            // Obtener la fecha de hoy en formato YYYY-MM-DD
-            const hoyStr = new Date().toISOString().split('T')[0];
-
-            // Mostrar formato de fecha amigable para el título
+            // Formatear título amigable de la fecha
+            const [year, month, day] = dateStr.split('-').map(Number);
+            const fechaObj = new Date(year, month - 1, day);
             const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            fechaTitulo.innerText = new Date().toLocaleDateString('es-ES', opcionesFecha);
+            fechaTitulo.innerText = fechaObj.toLocaleDateString('es-ES', opcionesFecha);
 
-            try {
-                const response = await fetch('data/historico.json');
-                if (!response.ok) throw new Error('No se pudo encontrar el archivo histórico');
-                
-                const historico = await response.json();
-                const datosHoy = historico[hoyStr];
+            const datosDia = historicoData[dateStr];
 
-                if (datosHoy && datosHoy.values && datosHoy.values.some(v => v !== null)) {
-                    let html = '<div class="sorteos-list">';
-                    const nombresSorteos = [
-                        "Primer Sorteo",
-                        "Segundo Sorteo",
-                        "Tercer Sorteo",
-                        "Cuarto Sorteo",
-                        "Quinto Sorteo"
-                    ];
+            if (datosDia && datosDia.values && datosDia.values.some(v => v !== null)) {
+                let html = '<div class="sorteos-list">';
+                const nombresSorteos = [
+                    "Primer Sorteo",
+                    "Segundo Sorteo",
+                    "Tercer Sorteo",
+                    "Cuarto Sorteo",
+                    "Quinto Sorteo"
+                ];
 
-                    datosHoy.values.forEach((valor, index) => {
-                        if (valor) {
-                            html += `
-                                <div class="sorteo-item">
-                                    <span class="sorteo-label">${nombresSorteos[index]}</span>
-                                    <span class="sorteo-number">${valor}</span>
-                                </div>
-                            `;
-                        }
-                    });
-                    html += '</div>';
-
-                    container.innerHTML = html;
-
-                    // Mostrar enlace oficial si existe
-                    if (datosHoy.officialUrl) {
-                        linkOficial.href = datosHoy.officialUrl;
-                        enlaceContainer.style.display = 'block';
+                datosDia.values.forEach((valor, index) => {
+                    if (valor) {
+                        html += `
+                            <div class="sorteo-item">
+                                <span class="sorteo-label">${nombresSorteos[index]}</span>
+                                <span class="sorteo-number">${valor}</span>
+                            </div>
+                        `;
                     }
+                });
+                html += '</div>';
 
+                container.innerHTML = html;
+
+                if (datosDia.officialUrl) {
+                    linkOficial.href = datosDia.officialUrl;
+                    enlaceContainer.style.display = 'block';
                 } else {
-                    container.innerHTML = 'Aún no se han celebrado o publicado los sorteos para el día de hoy. Vuelve a consultar más tarde.';
+                    enlaceContainer.style.display = 'none';
                 }
 
-            } catch (error) {
-                console.error("Error al cargar los datos:", error);
-                container.innerHTML = 'No se pudieron cargar los resultados. Asegúrate de que el script de actualización se ha ejecutado al menos una vez.';
+            } else {
+                container.innerHTML = 'No hay resultados registrados para esta fecha.';
+                enlaceContainer.style.display = 'none';
             }
         }
 
-        // Ejecutar al cargar la página
-        cargarResultadosIndex();
+        // Arrancar la aplicación en el cliente
+        inicializar();
     </script>
 </body>
 </html>
