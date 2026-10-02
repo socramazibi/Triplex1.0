@@ -3,91 +3,207 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Estadísticas - Triplex</title>
+    <title>Resultados Triplex</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 650px; margin: 40px auto; padding: 0 20px; background: #f4f7f6; color: #333; }
-        .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        h1, h2 { margin-top: 0; color: #111; }
-        .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #edf2f7; }
-        .stat-row:last-child { border-bottom: none; }
-        .digit-badge { background: #007bff; color: white; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: bold; }
-        .back-link { display: inline-block; margin-bottom: 20px; text-decoration: none; color: #007bff; font-weight: 500; }
-        .back-link:hover { text-decoration: underline; }
-        .loading { color: #666; font-style: italic; }
+        :root {
+            --primary-color: #007bff;
+            --primary-hover: #0056b3;
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --text-secondary: #666666;
+            --border-color: #edf2f7;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            max-width: 650px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            color: #111;
+        }
+
+        .btn-stats {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 10px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: background 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .btn-stats:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .date-title {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-top: 0;
+            margin-bottom: 16px;
+            text-transform: capitalize;
+        }
+
+        .sorteos-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .sorteo-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background-color: #fafbfc;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        .sorteo-label {
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .sorteo-number {
+            font-size: 1.3rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            color: #111;
+            background-color: #e9ecef;
+            padding: 4px 12px;
+            border-radius: 6px;
+        }
+
+        .status-message {
+            text-align: center;
+            color: var(--text-secondary);
+            font-style: italic;
+            padding: 20px 0;
+        }
+
+        .official-link-container {
+            margin-top: 20px;
+            text-align: right;
+        }
+
+        .official-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .official-link:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
 
-    <a href="index.html" class="back-link">← Volver al inicio</a>
-    
-    <div class="card">
-        <h1>Estadísticas del Triplex</h1>
-        <p id="total-sorteos" class="loading">Analizando el histórico de sorteos...</p>
-    </div>
+    <header>
+        <h1>Triplex</h1>
+        <a href="stats.html" class="btn-stats">📊 Ver Estadísticas</a>
+    </header>
 
     <div class="card">
-        <h2>Dígitos más frecuentes (0 al 9)</h2>
-        <div id="ranking-container" class="loading">Calculando frecuencias...</div>
+        <h2 id="fecha-actual" class="date-title">Cargando fecha...</h2>
+        <div id="resultados-container" class="status-message">
+            Consultando resultados de hoy...
+        </div>
+        <div id="enlace-oficial-container" class="official-link-container" style="display: none;">
+            <a id="link-oficial" href="#" target="_blank" class="official-link">Ver fuente oficial de la ONCE ↗</a>
+        </div>
     </div>
 
     <script>
-        async function cargarEstadisticas() {
+        async function cargarResultadosIndex() {
+            const container = document.getElementById('resultados-container');
+            const fechaTitulo = document.getElementById('fecha-actual');
+            const enlaceContainer = document.getElementById('enlace-oficial-container');
+            const linkOficial = document.getElementById('link-oficial');
+
+            // Obtener la fecha de hoy en formato YYYY-MM-DD
+            const hoyStr = new Date().toISOString().split('T')[0];
+
+            // Mostrar formato de fecha amigable para el título
+            const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            fechaTitulo.innerText = new Date().toLocaleDateString('es-ES', opcionesFecha);
+
             try {
                 const response = await fetch('data/historico.json');
-                if (!response.ok) throw new Error('No se pudo leer el histórico');
+                if (!response.ok) throw new Error('No se pudo encontrar el archivo histórico');
                 
                 const historico = await response.json();
+                const datosHoy = historico[hoyStr];
 
-                const frecuencias = { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0 };
-                let totalSorteosValidos = 0;
+                if (datosHoy && datosHoy.values && datosHoy.values.some(v => v !== null)) {
+                    let html = '<div class="sorteos-list">';
+                    const nombresSorteos = [
+                        "Primer Sorteo",
+                        "Segundo Sorteo",
+                        "Tercer Sorteo",
+                        "Cuarto Sorteo",
+                        "Quinto Sorteo"
+                    ];
 
-                // Recorremos todas las fechas guardadas en el JSON unificado
-                for (const fecha in historico) {
-                    const item = historico[fecha];
-                    if (item && item.values) {
-                        item.values.forEach(sorteo => {
-                            if (sorteo) {
-                                totalSorteosValidos++;
-                                // Cada sorteo es un número de 3 dígitos (ej: "482")
-                                for (const digito of sorteo) {
-                                    if (frecuencias[digito] !== undefined) {
-                                        frecuencias[digito]++;
-                                    }
-                                }
-                            }
-                        });
+                    datosHoy.values.forEach((valor, index) => {
+                        if (valor) {
+                            html += `
+                                <div class="sorteo-item">
+                                    <span class="sorteo-label">${nombresSorteos[index]}</span>
+                                    <span class="sorteo-number">${valor}</span>
+                                </div>
+                            `;
+                        }
+                    });
+                    html += '</div>';
+
+                    container.innerHTML = html;
+
+                    // Mostrar enlace oficial si existe
+                    if (datosHoy.officialUrl) {
+                        linkOficial.href = datosHoy.officialUrl;
+                        enlaceContainer.style.display = 'block';
                     }
+
+                } else {
+                    container.innerHTML = 'Aún no se han celebrado o publicado los sorteos para el día de hoy. Vuelve a consultar más tarde.';
                 }
 
-                // Mostrar total de sorteos analizados
-                document.getElementById('total-sorteos').innerText = `Total de sorteos analizados en el archivo histórico: ${totalSorteosValidos}`;
-
-                // Ordenar de mayor a menor frecuencia
-                const ranking = Object.entries(frecuencias).sort((a, b) => b[1] - a[1]);
-
-                let html = '';
-                ranking.forEach(([digito, count], index) => {
-                    html += `
-                        <div class="stat-row">
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <span class="digit-badge">${digito}</span>
-                                <span><strong>#${index + 1}</strong> (Dígito ${digito})</span>
-                            </div>
-                            <span><strong>${count}</strong> apariciones</span>
-                        </div>
-                    `;
-                });
-
-                document.getElementById('ranking-container').innerHTML = html;
-
             } catch (error) {
-                document.getElementById('total-sorteos').innerText = 'No se pudieron cargar los datos.';
-                document.getElementById('ranking-container').innerText = 'Verifica que el archivo data/historico.json exista y tenga datos.';
-                console.error(error);
+                console.error("Error al cargar los datos:", error);
+                container.innerHTML = 'No se pudieron cargar los resultados. Asegúrate de que el script de actualización se ha ejecutado al menos una vez.';
             }
         }
 
-        cargarEstadisticas();
+        // Ejecutar al cargar la página
+        cargarResultadosIndex();
     </script>
 </body>
 </html>
