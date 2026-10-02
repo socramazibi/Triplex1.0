@@ -13,10 +13,29 @@ function pad(n) {
   return String(n).padStart(2, "0");
 }
 
+// Obtiene la fecha exacta en formato YYYY-MM-DD basada en la hora de España
+function getSpainDateString(offsetDays = 0) {
+  const now = new Date();
+  // Ajustar usando la zona horaria de Madrid/España
+  const options = { timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit' };
+  const formatter = new Intl.DateTimeFormat('en-CA', options); // en-CA da formato YYYY-MM-DD por defecto
+  
+  // Si necesitamos aplicar un offset de días
+  if (offsetDays !== 0) {
+    const spainTimeStr = formatter.format(now);
+    const [y, m, d] = spainTimeStr.split('-').map(Number);
+    const targetDate = new Date(y, m - 1, d + offsetDays);
+    const year = targetDate.getFullYear();
+    const month = pad(targetDate.getMonth() + 1);
+    const day = pad(targetDate.getDate());
+    return `${year}-${month}-${day}`;
+  }
+  
+  return formatter.format(now);
+}
+
 function getTargetDate(offsetDays = 0) {
-  const date = new Date();
-  date.setDate(date.getDate() + offsetDays);
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  return getSpainDateString(offsetDays);
 }
 
 function slugForDate(value) {
@@ -45,15 +64,21 @@ function extractResults(text) {
   return values;
 }
 
-// Genera un array con todas las fechas desde el 1 de enero de este año hasta hoy
+// Genera todas las fechas del año en curso basándose en la hora local
 function getAllDatesOfCurrentYear() {
   const dates = [];
-  const year = new Date().getFullYear();
-  let currentDate = new Date(year, 0, 1); // 1 de enero
-  const today = new Date();
+  const year = new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid', year: 'numeric' });
+  let currentDate = new Date(Number(year), 0, 1);
+  
+  const todayStr = getSpainDateString(0);
+  const [todayY, todayM, todayD] = todayStr.split('-').map(Number);
+  const todayDate = new Date(todayY, todayM - 1, todayD);
 
-  while (currentDate <= today) {
-    dates.push(`${currentDate.getFullYear()}-${pad(currentDate.getMonth() + 1)}-${pad(currentDate.getDate())}`);
+  while (currentDate <= todayDate) {
+    const y = currentDate.getFullYear();
+    const m = pad(currentDate.getMonth() + 1);
+    const d = pad(currentDate.getDate());
+    dates.push(`${y}-${m}-${d}`);
     currentDate.setDate(currentDate.getDate() + 1);
   }
   return dates;
@@ -120,19 +145,17 @@ async function run() {
     console.log("Primera ejecución detectada: Descargando todo el histórico del año en curso...");
     daysToCheck = getAllDatesOfCurrentYear();
   } else {
-    console.log("Ejecución rutinaria: Comprobando los últimos 3 días...");
+    console.log("Ejecución rutinaria: Comprobando los últimos 3 días (hora española)...");
     daysToCheck = [getTargetDate(0), getTargetDate(-1), getTargetDate(-2)];
   }
 
-  // Procesar las fechas correspondientes
   for (const targetDate of daysToCheck) {
     await processDate(targetDate, historico);
-    // Pequeña pausa opcional si descarga el año entero para no saturar el proxy
     if (!fileExists) await new Promise(resolve => setTimeout(resolve, 200));
   }
 
   saveHistorico(historico);
-  console.log("¡Proceso finalizado con éxito! data/historico.json actualizado.");
+  console.log("¡Proceso finalizado! data/historico.json actualizado correctamente.");
 }
 
 run();
