@@ -2731,22 +2731,32 @@
   },
   "2026-10-01": {
     "values": [
-      "311",
-      "371",
-      "417",
-      "562",
-      "355"
+      "835",
+      "087",
+      "375",
+      "868",
+      "390"
     ],
-    "officialUrl": "https://www.juegosonce.es/resultados-triplex-1-octubre-2026"
+    "officialUrl": "https://www.juegosonce.es/resultados-triplex-1-septiembre-2026"
   },
   "2026-10-02": {
     "values": [
-      "319",
-      "092",
-      "085",
-      "742",
-      "013"
+      "388",
+      "285",
+      "327",
+      "281",
+      "554"
     ],
-    "officialUrl": "https://www.juegosonce.es/resultados-triplex-2-octubre-2026"
+    "officialUrl": "https://www.juegosonce.es/resultados-triplex-2-septiembre-2026"
+  },
+  "2026-10-03": {
+    "values": [
+      "485",
+      "502",
+      "150",
+      "759",
+      "234"
+    ],
+    "officialUrl": "https://www.juegosonce.es/resultados-triplex-3-septiembre-2026"
   }
 }
