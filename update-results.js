@@ -35,10 +35,11 @@ function getTargetDate(offsetDays = 0) {
   return getSpainDateString(offsetDays);
 }
 
+// CORREGIDO: month está entre 1 y 12, el array MONTHS empieza en 0. Restamos 1 correctamente.
 function slugForDate(value) {
   const [year, month, day] = value.split("-").map(Number);
-  const date = new Date(year, month - 1, day);
-  return `${date.getDate()}-${MONTHS[date.getMonth() - 1]}-${date.getFullYear()}`;
+  const nombreMes = MONTHS[month - 1]; // Enero es 1 - 1 = 0 (índice correcto del array)
+  return `${day}-${nombreMes}-${year}`;
 }
 
 function extractResults(text) {
@@ -118,27 +119,24 @@ async function processDate(dateStr, historico) {
     
     const text = await response.text();
     
-    // --- VALIDACIÓN DE SEGURIDAD ---
-    // Extraemos el día y el mes numérico/texto de la fecha solicitada (ej: "3" y "octubre")
+    // Validación de seguridad por fecha
     const [year, monthNum, dayNum] = dateStr.split("-").map(Number);
     const monthName = MONTHS[monthNum - 1];
     
-    // Comprobamos si el texto devuelto realmente pertenece a esta fecha y no es un fallback del día anterior
     const textLower = text.toLowerCase();
     const hasDay = textLower.includes(String(dayNum));
     const hasMonth = textLower.includes(monthName);
     
     if (!hasDay || !hasMonth) {
-      console.log(`[AVISO] La página para ${dateStr} aún no está publicada o redirige a otra fecha. Se omite.`);
+      console.log(`[AVISO] La página oficial para ${dateStr} (${slug}) aún no está disponible o no coincide.`);
       return false;
     }
-    // ---------------------------------
 
     const values = extractResults(text);
     
     if (values.some(v => v !== null)) {
       historico[dateStr] = { values, officialUrl };
-      console.log(`[OK] ${dateStr} sincronizado correctamente.`);
+      console.log(`[OK] ${dateStr} sincronizado (${slug}).`);
       return true;
     }
   } catch (error) {
