@@ -13,14 +13,11 @@ function pad(n) {
   return String(n).padStart(2, "0");
 }
 
-// Obtiene la fecha exacta en formato YYYY-MM-DD basada en la hora de España
 function getSpainDateString(offsetDays = 0) {
   const now = new Date();
-  // Ajustar usando la zona horaria de Madrid/España
   const options = { timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit' };
-  const formatter = new Intl.DateTimeFormat('en-CA', options); // en-CA da formato YYYY-MM-DD por defecto
+  const formatter = new Intl.DateTimeFormat('en-CA', options);
   
-  // Si necesitamos aplicar un offset de días
   if (offsetDays !== 0) {
     const spainTimeStr = formatter.format(now);
     const [y, m, d] = spainTimeStr.split('-').map(Number);
@@ -41,7 +38,7 @@ function getTargetDate(offsetDays = 0) {
 function slugForDate(value) {
   const [year, month, day] = value.split("-").map(Number);
   const date = new Date(year, month - 1, day);
-  return `${date.getDate()}-${MONTHS[date.getMonth()]}-${date.getFullYear()}`;
+  return `${date.getDate()}-${MONTHS[date.getMonth() - 1]}-${date.getFullYear()}`;
 }
 
 function extractResults(text) {
@@ -64,7 +61,6 @@ function extractResults(text) {
   return values;
 }
 
-// Genera todas las fechas del año en curso basándose en la hora local
 function getAllDatesOfCurrentYear() {
   const dates = [];
   const year = new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid', year: 'numeric' });
@@ -101,7 +97,6 @@ function saveHistorico(historico) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
 
-  // Ordena las claves cronológicamente
   const sortedHistorico = Object.keys(historico)
     .sort()
     .reduce((acc, key) => {
@@ -122,11 +117,28 @@ async function processDate(dateStr, historico) {
     if (!response.ok) return false;
     
     const text = await response.text();
+    
+    // --- VALIDACIÓN DE SEGURIDAD ---
+    // Extraemos el día y el mes numérico/texto de la fecha solicitada (ej: "3" y "octubre")
+    const [year, monthNum, dayNum] = dateStr.split("-").map(Number);
+    const monthName = MONTHS[monthNum - 1];
+    
+    // Comprobamos si el texto devuelto realmente pertenece a esta fecha y no es un fallback del día anterior
+    const textLower = text.toLowerCase();
+    const hasDay = textLower.includes(String(dayNum));
+    const hasMonth = textLower.includes(monthName);
+    
+    if (!hasDay || !hasMonth) {
+      console.log(`[AVISO] La página para ${dateStr} aún no está publicada o redirige a otra fecha. Se omite.`);
+      return false;
+    }
+    // ---------------------------------
+
     const values = extractResults(text);
     
     if (values.some(v => v !== null)) {
       historico[dateStr] = { values, officialUrl };
-      console.log(`[OK] ${dateStr} sincronizado.`);
+      console.log(`[OK] ${dateStr} sincronizado correctamente.`);
       return true;
     }
   } catch (error) {
