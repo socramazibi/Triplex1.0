@@ -16,7 +16,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            max-width: 750px;
+            max-width: 850px;
             margin: 40px auto;
             padding: 0 20px;
             background-color: var(--bg-color);
@@ -82,7 +82,6 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            width: 120px;
             font-weight: 600;
         }
 
@@ -98,24 +97,7 @@
             font-weight: bold; 
         }
 
-        .progress-bar-container {
-            flex-grow: 1;
-            background: #e9ecef;
-            border-radius: 6px;
-            height: 12px;
-            margin: 0 15px;
-            overflow: hidden;
-        }
-
-        .progress-bar {
-            background: var(--primary-color);
-            height: 100%;
-            border-radius: 6px;
-            transition: width 0.4s ease;
-        }
-
         .stat-count {
-            width: 90px;
             text-align: right;
             font-size: 0.95rem;
             color: var(--text-secondary);
@@ -127,7 +109,7 @@
             gap: 20px;
         }
 
-        @media (max-width: 600px) {
+        @media (max-width: 700px) {
             .grid-2 { grid-template-columns: 1fr; }
         }
 
@@ -185,9 +167,16 @@
         </div>
     </div>
 
-    <div class="card">
-        <h2>Combinaciones Completas de 3 Cifras Más Repetidas</h2>
-        <div id="sorteos-repetidos-container" class="loading">Calculando combinaciones...</div>
+    <div class="grid-2">
+        <div class="card">
+            <h2>Combinaciones Más Frecuentes (Top 10)</h2>
+            <div id="sorteos-repetidos-container" class="loading">Calculando combinaciones...</div>
+        </div>
+
+        <div class="card">
+            <h2>Combinaciones Menos Frecuentes (Frías)</h2>
+            <div id="sorteos-frios-container" class="loading">Calculando combinaciones...</div>
+        </div>
     </div>
 
     <script>
@@ -260,23 +249,20 @@
                 const porcimpares = totalParImpar > 0 ? ((imparesCount / totalParImpar) * 100).toFixed(1) : 0;
                 document.getElementById('lbl-par-impar').innerText = `${porcpares}% P`;
 
+                // Renderizar ranking de dígitos sin barras
                 let htmlRanking = '';
-                const maxFrecuencia = ranking[0][1] || 1;
-
                 ranking.forEach(([digito, count], index) => {
-                    const porcentajeBarra = Math.round((count / maxFrecuencia) * 100);
                     const porcentajeTotal = totalDigitosAnalizados > 0 ? ((count / totalDigitosAnalizados) * 100).toFixed(1) : 0;
                     
                     htmlRanking += `
                         <div class="stat-row">
                             <div class="digit-info">
                                 <span class="digit-badge">${digito}</span>
-                                <span>#${index + 1} (${digito})</span>
+                                <span>#${index + 1} (Dígito ${digito})</span>
                             </div>
-                            <div class="progress-bar-container">
-                                <div class="progress-bar" style="width: ${porcentajeBarra}%;"></div>
+                            <div class="stat-count">
+                                <strong>${count} veces</strong> <span style="font-size:0.8rem; color:#888;">(${porcentajeTotal}%)</span>
                             </div>
-                            <div class="stat-count"><strong>${count}</strong> <span style="font-size:0.8rem; color:#888;">(${porcentajeTotal}%)</span></div>
                         </div>
                     `;
                 });
@@ -306,6 +292,7 @@
                     </div>
                 `;
 
+                // Top 10 Más Frecuentes
                 const topCombinaciones = Object.entries(combinacionesCompletas)
                     .sort((a, b) => b[1] - a[1])
                     .slice(0, 10);
@@ -314,12 +301,28 @@
                 topCombinaciones.forEach(([sorteoNum, count], index) => {
                     htmlCombinaciones += `
                         <div class="stat-row">
-                            <span><strong>#${index + 1}</strong> — Sorteo: <span class="number-badge">${sorteoNum}</span></span>
+                            <span><strong>#${index + 1}</strong> — <span class="number-badge">${sorteoNum}</span></span>
                             <strong>${count} ${count === 1 ? 'vez' : 'veces'}</strong>
                         </div>
                     `;
                 });
-                document.getElementById('sorteos-repetidos-container').innerHTML = htmlCombinaciones || '<div class="loading">Sin datos suficientes</div>';
+                document.getElementById('sorteos-repetidos-container').innerHTML = htmlCombinaciones || '<div class="loading">Sin datos</div>';
+
+                // Top 10 Menos Frecuentes (Frías)
+                const friasCombinaciones = Object.entries(combinacionesCompletas)
+                    .sort((a, b) => a[1] - b[1])
+                    .slice(0, 10);
+
+                let htmlFrias = '';
+                friasCombinaciones.forEach(([sorteoNum, count], index) => {
+                    htmlFrias += `
+                        <div class="stat-row">
+                            <span><strong>#${index + 1}</strong> — <span class="number-badge">${sorteoNum}</span></span>
+                            <strong>${count} ${count === 1 ? 'vez' : 'veces'}</strong>
+                        </div>
+                    `;
+                });
+                document.getElementById('sorteos-frios-container').innerHTML = htmlFrias || '<div class="loading">Sin datos</div>';
 
             } catch (error) {
                 console.error(error);
