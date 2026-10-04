@@ -24,14 +24,38 @@
             line-height: 1.6;
         }
 
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
         .back-link { 
-            display: inline-block; 
-            margin-bottom: 20px; 
             text-decoration: none; 
             color: var(--primary-color); 
             font-weight: 500; 
         }
         .back-link:hover { text-decoration: underline; }
+
+        .filter-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+
+        .filter-container select {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            background-color: white;
+            font-size: 0.95rem;
+            color: var(--text-color);
+            cursor: pointer;
+        }
 
         .card { 
             background: var(--card-bg); 
@@ -128,7 +152,18 @@
 </head>
 <body>
 
-    <a href="index.html" class="back-link">← Volver al inicio</a>
+    <div class="header-container">
+        <a href="index.html" class="back-link">← Volver al inicio</a>
+        <div class="filter-container">
+            <label for="filterSelect">Filtrar por:</label>
+            <select id="filterSelect" onchange="cargarEstadisticasAvanzadas()">
+                <option value="semana">Última semana</option>
+                <option value="mes">Este mes</option>
+                <option value="2026" selected>Año 2026</option>
+                <option value="todos">Todos los años (Global)</option>
+            </select>
+        </div>
+    </div>
     
     <div class="card">
         <h1>📊 Panel de Estadísticas Avanzadas</h1>
@@ -181,11 +216,47 @@
 
     <script>
         async function cargarEstadisticasAvanzadas() {
+            const filtro = document.getElementById('filterSelect').value;
+            const containerSorteos = document.getElementById('total-sorteos');
+            containerSorteos.style.display = 'block';
+            containerSorteos.innerText = 'Cargando y analizando datos históricos...';
+            document.getElementById('summary-container').style.display = 'none';
+
             try {
-                const response = await fetch('data/historico.json');
-                if (!response.ok) throw new Error('No se pudo leer el archivo histórico');
-                
-                const historico = await response.json();
+                // Descargamos el histórico de 2026 (y se pueden añadir más en el futuro ej: historico2027.json)
+                const archivosACargar = ['data/historico2026.json'];
+                let historicoGlobal = {};
+
+                for (const archivo of archivosACargar) {
+                    try {
+                        const response = await fetch(archivo);
+                        if (response.ok) {
+                            const datosAnio = await response.json();
+                            historicoGlobal = { ...historicoGlobal, ...datosAnio };
+                        }
+                    } catch (e) {
+                        console.warn(`No se pudo cargar el archivo: ${archivo}`);
+                    }
+                }
+
+                // Filtrar datos según la opción seleccionada del desplegable
+                const fechasFiltradas = Object.keys(historicoGlobal).filter(fechaStr => {
+                    const [y, m, d] = fechaStr.split('-').map(Number);
+                    const fechaItem = new Date(y, m - 1, d);
+                    const ahora = new Date();
+
+                    if (filtro === 'semana') {
+                        const hace7Dias = new Date();
+                        hace7Dias.setDate(ahora.getDate() - 7);
+                        return fechaItem >= hace7Dias && fechaItem <= ahora;
+                    } else if (filtro === 'mes') {
+                        return m === (ahora.getMonth() + 1) && y === ahora.getFullYear();
+                    } else if (filtro !== 'todos') {
+                        // Es un año específico (ej: "2026")
+                        return y.toString() === filtro;
+                    }
+                    return true; // "todos"
+                });
 
                 const frecuencias = { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0 };
                 const combinacionesCompletas = {};
@@ -196,8 +267,8 @@
                 let doblesCount = 0;
                 let escalerasCount = 0;
 
-                for (const fecha in historico) {
-                    const item = historico[fecha];
+                fechasFiltradas.forEach(fecha => {
+                    const item = historicoGlobal[fecha];
                     if (item && item.values) {
                         item.values.forEach(sorteo => {
                             if (sorteo && sorteo.length === 3) {
@@ -230,14 +301,19 @@
                             }
                         });
                     }
-                }
+                });
 
                 if (totalSorteosValidos === 0) {
-                    document.getElementById('total-sorteos').innerText = 'No hay suficientes datos en el archivo histórico para mostrar estadísticas.';
+                    containerSorteos.innerText = 'No hay suficientes datos registrados para el filtro seleccionado.';
+                    document.getElementById('ranking-container').innerHTML = '<div class="loading">Sin datos</div>';
+                    document.getElementById('paridad-container').innerHTML = '<div class="loading">Sin datos</div>';
+                    document.getElementById('patrones-container').innerHTML = '<div class="loading">Sin datos</div>';
+                    document.getElementById('sorteos-repetidos-container').innerHTML = '<div class="loading">Sin datos</div>';
+                    document.getElementById('sorteos-frios-container').innerHTML = '<div class="loading">Sin datos</div>';
                     return;
                 }
 
-                document.getElementById('total-sorteos').style.display = 'none';
+                containerSorteos.style.display = 'none';
                 document.getElementById('summary-container').style.display = 'flex';
                 document.getElementById('lbl-total-sorteos').innerText = totalSorteosValidos;
 
@@ -249,7 +325,7 @@
                 const porcimpares = totalParImpar > 0 ? ((imparesCount / totalParImpar) * 100).toFixed(1) : 0;
                 document.getElementById('lbl-par-impar').innerText = `${porcpares}% P`;
 
-                // Renderizar ranking de dígitos sin barras
+                // Renderizar ranking de dígitos
                 let htmlRanking = '';
                 ranking.forEach(([digito, count], index) => {
                     const porcentajeTotal = totalDigitosAnalizados > 0 ? ((count / totalDigitosAnalizados) * 100).toFixed(1) : 0;
@@ -326,7 +402,7 @@
 
             } catch (error) {
                 console.error(error);
-                document.getElementById('total-sorteos').innerText = 'Error al procesar el archivo histórico.';
+                containerSorteos.innerText = 'Error al procesar los archivos históricos.';
             }
         }
 
