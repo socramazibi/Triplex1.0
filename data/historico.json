@@ -2751,12 +2751,22 @@
   },
   "2026-10-03": {
     "values": [
-      "319",
-      "092",
-      "085",
-      "742",
-      "013"
+      "037",
+      "394",
+      "859",
+      "174",
+      "844"
     ],
     "officialUrl": "https://www.juegosonce.es/resultados-triplex-3-octubre-2026"
+  },
+  "2026-10-04": {
+    "values": [
+      "775",
+      "805",
+      null,
+      null,
+      null
+    ],
+    "officialUrl": "https://www.juegosonce.es/resultados-triplex-4-octubre-2026"
   }
 }
