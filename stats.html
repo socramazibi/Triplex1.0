@@ -42,7 +42,7 @@
         }
 
         h1, h2 { margin-top: 0; color: #111; }
-        h2 { font-size: 1.2rem; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; margin-bottom: 16px; }
+        h2 { font-size: 1.1rem; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; margin-bottom: 16px; }
 
         .summary-box {
             display: flex;
@@ -62,7 +62,7 @@
         }
 
         .summary-number {
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             font-weight: bold;
             color: var(--primary-color);
             display: block;
@@ -132,6 +132,16 @@
         }
 
         .loading { color: var(--text-secondary); font-style: italic; text-align: center; padding: 15px; }
+        
+        .number-badge {
+            font-family: monospace;
+            font-size: 1.1rem;
+            font-weight: bold;
+            background: #e9ecef;
+            padding: 2px 8px;
+            border-radius: 4px;
+            letter-spacing: 1px;
+        }
     </style>
 </head>
 <body>
@@ -139,7 +149,7 @@
     <a href="index.html" class="back-link">← Volver al inicio</a>
     
     <div class="card">
-        <h1>📊 Estadísticas Avanzadas</h1>
+        <h1>📊 Panel de Estadísticas Avanzadas</h1>
         <p id="total-sorteos" class="loading">Cargando y analizando datos históricos...</p>
         
         <div class="summary-box" id="summary-container" style="display: none;">
@@ -152,14 +162,14 @@
                 <span id="lbl-top-digit" class="summary-number">-</span>
             </div>
             <div class="summary-item">
-                <span>Pares / Impares</span>
+                <span>Paridad Global</span>
                 <span id="lbl-par-impar" class="summary-number">-</span>
             </div>
         </div>
     </div>
 
     <div class="card">
-        <h2>Frecuencia de Dígitos (0 al 9)</h2>
+        <h2>Frecuencia de Dígitos individuales (0 al 9)</h2>
         <div id="ranking-container" class="loading">Calculando frecuencias...</div>
     </div>
 
@@ -170,9 +180,14 @@
         </div>
 
         <div class="card">
-            <h2>Suma de Dígitos (Top 5)</h2>
-            <div id="sumas-container" class="loading">Calculando sumas...</div>
+            <h2>Patrones Especiales</h2>
+            <div id="patrones-container" class="loading">Calculando patrones...</div>
         </div>
+    </div>
+
+    <div class="card">
+        <h2>Combinaciones Completas de 3 Cifras Más Repetidas</h2>
+        <div id="sorteos-repetidos-container" class="loading">Calculando combinaciones...</div>
     </div>
 
     <script>
@@ -184,13 +199,14 @@
                 const historico = await response.json();
 
                 const frecuencias = { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0 };
+                const combinacionesCompletas = {};
                 let totalSorteosValidos = 0;
                 let totalDigitosAnalizados = 0;
                 let paresCount = 0;
                 let imparesCount = 0;
-                const sumasFrecuencia = {};
+                let doblesCount = 0;
+                let escalerasCount = 0;
 
-                // Recorremos todo el histórico acumulado
                 for (const fecha in historico) {
                     const item = historico[fecha];
                     if (item && item.values) {
@@ -198,21 +214,30 @@
                             if (sorteo && sorteo.length === 3) {
                                 totalSorteosValidos++;
                                 
-                                let sumaSorteo = 0;
+                                combinacionesCompletas[sorteo] = (combinacionesCompletas[sorteo] || 0) + 1;
+
+                                const d1 = parseInt(sorteo[0], 10);
+                                const d2 = parseInt(sorteo[1], 10);
+                                const d3 = parseInt(sorteo[2], 10);
+
+                                if (d1 === d2 || d2 === d3 || d1 === d3) {
+                                    doblesCount++;
+                                }
+
+                                if ((d2 === d1 + 1 && d3 === d2 + 1) || (d2 === d1 - 1 && d3 === d2 - 1)) {
+                                    escalerasCount++;
+                                }
+
                                 for (const digitoStr of sorteo) {
                                     const d = parseInt(digitoStr, 10);
                                     if (!isNaN(d)) {
                                         frecuencias[d]++;
                                         totalDigitosAnalizados++;
-                                        sumaSorteo += d;
 
                                         if (d % 2 === 0) paresCount++;
                                         else imparesCount++;
                                     }
                                 }
-
-                                // Contabilizar sumas totales (ej: sorteo 482 -> suma 14)
-                                sumasFrecuencia[sumaSorteo] = (sumasFrecuencia[sumaSorteo] || 0) + 1;
                             }
                         });
                     }
@@ -223,24 +248,18 @@
                     return;
                 }
 
-                // Ocultar mensaje de carga y mostrar resumen
                 document.getElementById('total-sorteos').style.display = 'none';
                 document.getElementById('summary-container').style.display = 'flex';
                 document.getElementById('lbl-total-sorteos').innerText = totalSorteosValidos;
 
-                // Ordenar frecuencias de mayor a menor
                 const ranking = Object.entries(frecuencias).sort((a, b) => b[1] - a[1]);
-                
-                // Dígito líder
                 document.getElementById('lbl-top-digit').innerText = `${ranking[0][0]} (${ranking[0][1]})`;
 
-                // Porcentaje paridad
                 const totalParImpar = paresCount + imparesCount;
                 const porcpares = totalParImpar > 0 ? ((paresCount / totalParImpar) * 100).toFixed(1) : 0;
                 const porcimpares = totalParImpar > 0 ? ((imparesCount / totalParImpar) * 100).toFixed(1) : 0;
                 document.getElementById('lbl-par-impar').innerText = `${porcpares}% P`;
 
-                // Renderizar barras de frecuencia de dígitos
                 let htmlRanking = '';
                 const maxFrecuencia = ranking[0][1] || 1;
 
@@ -263,7 +282,6 @@
                 });
                 document.getElementById('ranking-container').innerHTML = htmlRanking;
 
-                // Renderizar Paridad
                 document.getElementById('paridad-container').innerHTML = `
                     <div class="stat-row">
                         <span>Pares (0, 2, 4, 6, 8)</span>
@@ -275,21 +293,33 @@
                     </div>
                 `;
 
-                // Renderizar Top Sumas
-                const topSumas = Object.entries(sumasFrecuencia)
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 5);
+                const porcDobles = ((doblesCount / totalSorteosValidos) * 100).toFixed(1);
+                const porcEscaleras = ((escalerasCount / totalSorteosValidos) * 100).toFixed(1);
+                document.getElementById('patrones-container').innerHTML = `
+                    <div class="stat-row">
+                        <span>Con dígitos repetidos</span>
+                        <strong>${doblesCount} (${porcDobles}%)</strong>
+                    </div>
+                    <div class="stat-row" style="border-bottom:none;">
+                        <span>Secuencias (Escaleras)</span>
+                        <strong>${escalerasCount} (${porcEscaleras}%)</strong>
+                    </div>
+                `;
 
-                let htmlSumas = '';
-                topSumas.forEach(([suma, count]) => {
-                    htmlSumas += `
+                const topCombinaciones = Object.entries(combinacionesCompletas)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 10);
+
+                let htmlCombinaciones = '';
+                topCombinaciones.forEach(([sorteoNum, count], index) => {
+                    htmlCombinaciones += `
                         <div class="stat-row">
-                            <span>Suma total: <strong>${suma}</strong></span>
-                            <strong>${count} veces</strong>
+                            <span><strong>#${index + 1}</strong> — Sorteo: <span class="number-badge">${sorteoNum}</span></span>
+                            <strong>${count} ${count === 1 ? 'vez' : 'veces'}</strong>
                         </div>
                     `;
                 });
-                document.getElementById('sumas-container').innerHTML = htmlSumas || '<div class="loading">Sin datos</div>';
+                document.getElementById('sorteos-repetidos-container').innerHTML = htmlCombinaciones || '<div class="loading">Sin datos suficientes</div>';
 
             } catch (error) {
                 console.error(error);
