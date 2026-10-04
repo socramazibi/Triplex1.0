@@ -7,7 +7,10 @@ const MONTHS = [
 ];
 
 const DATA_DIR = path.join(__dirname, 'data');
-const HISTORICO_PATH = path.join(DATA_DIR, 'historico.json');
+
+// Obtenemos el año actual en curso (ej: "2026")
+const currentYear = new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid', year: 'numeric' });
+const HISTORICO_PATH = path.join(DATA_DIR, `historico${currentYear}.json`);
 
 function pad(n) {
   return String(n).padStart(2, "0");
@@ -35,10 +38,9 @@ function getTargetDate(offsetDays = 0) {
   return getSpainDateString(offsetDays);
 }
 
-// CORREGIDO: month está entre 1 y 12, el array MONTHS empieza en 0. Restamos 1 correctamente.
 function slugForDate(value) {
   const [year, month, day] = value.split("-").map(Number);
-  const nombreMes = MONTHS[month - 1]; // Enero es 1 - 1 = 0 (índice correcto del array)
+  const nombreMes = MONTHS[month - 1];
   return `${day}-${nombreMes}-${year}`;
 }
 
@@ -64,8 +66,7 @@ function extractResults(text) {
 
 function getAllDatesOfCurrentYear() {
   const dates = [];
-  const year = new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid', year: 'numeric' });
-  let currentDate = new Date(Number(year), 0, 1);
+  let currentDate = new Date(Number(currentYear), 0, 1);
   
   const todayStr = getSpainDateString(0);
   const [todayY, todayM, todayD] = todayStr.split('-').map(Number);
@@ -118,17 +119,20 @@ async function processDate(dateStr, historico) {
     if (!response.ok) return false;
     
     const text = await response.text();
+    const textLower = text.toLowerCase();
     
-    // Validación de seguridad por fecha
     const [year, monthNum, dayNum] = dateStr.split("-").map(Number);
     const monthName = MONTHS[monthNum - 1];
     
-    const textLower = text.toLowerCase();
     const hasDay = textLower.includes(String(dayNum));
     const hasMonth = textLower.includes(monthName);
     
-    if (!hasDay || !hasMonth) {
-      console.log(`[AVISO] La página oficial para ${dateStr} (${slug}) aún no está disponible o no coincide.`);
+    const ayerStr = getSpainDateString(-1);
+    const [, , ayerDayNum] = ayerStr.split("-").map(Number);
+    const isToday = (dateStr === getSpainDateString(0));
+    
+    if (!hasDay || !hasMonth || (isToday && textLower.includes(`de ${ayerDayNum} de`) && !textLower.includes(`de ${dayNum} de`))) {
+      console.log(`[ESPERANDO] Los resultados oficiales para ${dateStr} (${slug}) aún no están publicados.`);
       return false;
     }
 
@@ -136,7 +140,7 @@ async function processDate(dateStr, historico) {
     
     if (values.some(v => v !== null)) {
       historico[dateStr] = { values, officialUrl };
-      console.log(`[OK] ${dateStr} sincronizado (${slug}).`);
+      console.log(`[OK] ${dateStr} sincronizado correctamente en ${path.basename(HISTORICO_PATH)}.`);
       return true;
     }
   } catch (error) {
@@ -152,10 +156,10 @@ async function run() {
   let daysToCheck = [];
 
   if (!fileExists) {
-    console.log("Primera ejecución detectada: Descargando todo el histórico del año en curso...");
+    console.log(`Primera ejecución para el año ${currentYear}: Descargando histórico completo...`);
     daysToCheck = getAllDatesOfCurrentYear();
   } else {
-    console.log("Ejecución rutinaria: Comprobando los últimos 3 días (hora española)...");
+    console.log(`Ejecución rutinaria en ${path.basename(HISTORICO_PATH)}: Comprobando los últimos 3 días...`);
     daysToCheck = [getTargetDate(0), getTargetDate(-1), getTargetDate(-2)];
   }
 
@@ -165,7 +169,7 @@ async function run() {
   }
 
   saveHistorico(historico);
-  console.log("¡Proceso finalizado! data/historico.json actualizado correctamente.");
+  console.log(`¡Proceso finalizado! ${path.basename(HISTORICO_PATH)} actualizado correctamente.`);
 }
 
 run();
