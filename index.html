@@ -204,7 +204,7 @@
 
         async function inicializar() {
             try {
-                const response = await fetch('data/historico.json');
+                const response = await fetch('data/historico2026.json');
                 if (!response.ok) throw new Error('No se pudo cargar el archivo histórico');
                 
                 historicoData = await response.json();
@@ -231,7 +231,7 @@
 
             } catch (error) {
                 console.error("Error al cargar el histórico:", error);
-                document.getElementById('resultados-container').innerHTML = 'No se pudo cargar el archivo <code>data/historico.json</code>.';
+                document.getElementById('resultados-container').innerHTML = 'No se pudo cargar el archivo <code>data/historico2026.json</code>.';
             }
         }
 
