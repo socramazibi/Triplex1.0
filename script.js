@@ -1,6 +1,6 @@
 async function cargarResultadosHoy() {
   try {
-    const response = await fetch('data/historico.json');
+    const response = await fetch('data/historico2026.json');
     if (!response.ok) throw new Error('No se pudo cargar el archivo histórico');
     
     const historico = await response.json();
