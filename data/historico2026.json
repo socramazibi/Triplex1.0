@@ -2758,5 +2758,35 @@
       null
     ],
     "officialUrl": "https://www.juegosonce.es/resultados-triplex-11-octubre-2026"
+  },
+  "2026-10-17": {
+    "values": [
+      "890",
+      "731",
+      "740",
+      "041",
+      "109"
+    ],
+    "officialUrl": "https://www.juegosonce.es/resultados-triplex-17-octubre-2026"
+  },
+  "2026-10-18": {
+    "values": [
+      "924",
+      "356",
+      "374",
+      "460",
+      "864"
+    ],
+    "officialUrl": "https://www.juegosonce.es/resultados-triplex-18-octubre-2026"
+  },
+  "2026-10-19": {
+    "values": [
+      "924",
+      "356",
+      "374",
+      "460",
+      "864"
+    ],
+    "officialUrl": "https://www.juegosonce.es/resultados-triplex-19-octubre-2026"
   }
 }
